@@ -4,6 +4,7 @@ import cors from "cors";
 
 const app = express();
 
+app.use(express.static("build"));
 app.use(express.json());
 app.use(
   morgan((tokens, req, res) => {
@@ -74,8 +75,6 @@ app.delete(`${BASE_URL}/:id`, (request, response) => {
   persons = persons.filter((p) => p.id !== id);
   response.status(204).end();
 });
-
-
 
 app.post(BASE_URL, (request, response) => {
   const randomId = Math.floor(Math.random() * 10000) + 1;
