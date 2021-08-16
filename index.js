@@ -4,9 +4,9 @@ import cors from "cors";
 import dotenv from "dotenv";
 import Person from "./models/person.js";
 
-dotenv.config();
 const app = express();
-
+dotenv.config();
+app.use(cors());
 app.use(express.static("build"));
 app.use(express.json());
 app.use(
@@ -23,7 +23,6 @@ app.use(
     ].join(" ");
   })
 );
-app.use(cors());
 
 let persons = [];
 
@@ -38,28 +37,54 @@ app.get(BASE_URL, (request, response) => {
 });
 
 app.get("/info", (request, response) => {
-  const info = `<div>
-    <p>Phonebook has info for ${persons.length} people</p>
+  Person.find({}).then((p) => {
+    const info = `<div>
+    <p>Phonebook has info for ${p.length} people</p>
     <p>${new Date()}</p>
   </div>`;
-  response.send(info);
+    response.send(info);
+  });
 });
 
-app.get(`${BASE_URL}/:id`, (request, response) => {
-  const id = +request.params.id;
+app.get(`${BASE_URL}/:id`, (request, response, next) => {
+  const id = request.params.id;
 
-  const person = persons.find((p) => p.id === id);
-  if (!person) {
-    response.status(404).end();
-    return;
-  }
-  response.json(person);
+  Person.findById(id)
+    .then((p) => {
+      if (p) {
+        response.json(p);
+      } else {
+        response.status(404).end();
+      }
+    })
+    .catch((error) => next(error));
 });
 
 app.delete(`${BASE_URL}/:id`, (request, response) => {
-  const id = +request.params.id;
-  persons = persons.filter((p) => p.id !== id);
+  const id = request.params.id;
+  Person.findByIdAndDelete(id)
+    .then((result) => {
+      response.status(204).end();
+    })
+    .catch((error) => next(error));
   response.status(204).end();
+});
+
+app.put(`${BASE_URL}/:id`, (request, response) => {
+  const id = request.params.id;
+
+  const body = request.body;
+
+  const person = {
+    name: body.name,
+    number: body.number,
+  };
+
+  Person.findByIdAndUpdate(id, person, { new: true })
+    .then((updatePerson) => {
+      response.json(updatePerson);
+    })
+    .catch((error) => next(error));
 });
 
 app.post(BASE_URL, (request, response) => {
@@ -89,6 +114,19 @@ app.post(BASE_URL, (request, response) => {
     response.json(savePerson);
   });
 });
+
+const errorHandler = (error, request, response, next) => {
+  console.error(error.message);
+
+  if (error.name === "CastError") {
+    return response.status(400).send({ error: "malformatted id" });
+  } else if (error.name === "ValidationError") {
+    return response.status(400).json({ error: error.message });
+  }
+  next(error);
+};
+
+app.use(errorHandler);
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT);
