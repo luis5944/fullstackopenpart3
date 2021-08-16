@@ -1,7 +1,10 @@
 import express from "express";
 import morgan from "morgan";
 import cors from "cors";
+import dotenv from "dotenv";
+import Person from "./models/person.js";
 
+dotenv.config();
 const app = express();
 
 app.use(express.static("build"));
@@ -22,33 +25,16 @@ app.use(
 );
 app.use(cors());
 
-let persons = [
-  {
-    id: 1,
-    name: "Arto Hellas",
-    number: "040-123456",
-  },
-  {
-    id: 2,
-    name: "Ada Lovelace",
-    number: "39-44-5323523",
-  },
-  {
-    id: 3,
-    name: "Dan Abramov",
-    number: "12-43-234345",
-  },
-  {
-    id: 4,
-    name: "Mary Poppendieck",
-    number: "39-23-6423122",
-  },
-];
+let persons = [];
 
 const BASE_URL = "/api/persons";
 
 app.get(BASE_URL, (request, response) => {
-  response.json(persons);
+  const findPersons = async () => {
+    const result = await Person.find({});
+    response.json(result.map((r) => r.toJSON()));
+  };
+  findPersons();
 });
 
 app.get("/info", (request, response) => {
@@ -77,9 +63,7 @@ app.delete(`${BASE_URL}/:id`, (request, response) => {
 });
 
 app.post(BASE_URL, (request, response) => {
-  const randomId = Math.floor(Math.random() * 10000) + 1;
   const body = request.body;
-
   if (!body.name) {
     return response.status(400).json({
       error: "name missing",
@@ -97,14 +81,13 @@ app.post(BASE_URL, (request, response) => {
     });
   }
 
-  const person = {
-    id: randomId,
+  const person = new Person({
     name: body.name,
     number: body.number,
-  };
-
-  persons = persons.concat(person);
-  response.json(person);
+  });
+  person.save().then((savePerson) => {
+    response.json(savePerson);
+  });
 });
 
 const PORT = process.env.PORT || 3001;
