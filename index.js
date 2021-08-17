@@ -60,7 +60,7 @@ app.get(`${BASE_URL}/:id`, (request, response, next) => {
     .catch((error) => next(error));
 });
 
-app.delete(`${BASE_URL}/:id`, (request, response) => {
+app.delete(`${BASE_URL}/:id`, (request, response, next) => {
   const id = request.params.id;
   Person.findByIdAndDelete(id)
     .then((result) => {
@@ -70,7 +70,7 @@ app.delete(`${BASE_URL}/:id`, (request, response) => {
   response.status(204).end();
 });
 
-app.put(`${BASE_URL}/:id`, (request, response) => {
+app.put(`${BASE_URL}/:id`, (request, response, next) => {
   const id = request.params.id;
 
   const body = request.body;
@@ -87,19 +87,14 @@ app.put(`${BASE_URL}/:id`, (request, response) => {
     .catch((error) => next(error));
 });
 
-app.post(BASE_URL, (request, response) => {
+app.post(BASE_URL, (request, response, next) => {
   const body = request.body;
   if (!body.name) {
     return response.status(400).json({
       error: "name missing",
     });
   }
-  const exist = persons.find((p) => p.name === body.name);
-  if (exist) {
-    return response.status(400).json({
-      error: "name must be unique",
-    });
-  }
+
   if (!body.number) {
     return response.status(400).json({
       error: "number missing",
@@ -110,14 +105,16 @@ app.post(BASE_URL, (request, response) => {
     name: body.name,
     number: body.number,
   });
-  person.save().then((savePerson) => {
-    response.json(savePerson);
-  });
+
+  person
+    .save()
+    .then((savePerson) => {
+      response.json(savePerson);
+    })
+    .catch((error) => next(error));
 });
 
 const errorHandler = (error, request, response, next) => {
-  console.error(error.message);
-
   if (error.name === "CastError") {
     return response.status(400).send({ error: "malformatted id" });
   } else if (error.name === "ValidationError") {
